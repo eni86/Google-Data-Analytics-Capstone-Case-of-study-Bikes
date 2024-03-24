@@ -1,5 +1,5 @@
-# Google Data Analytics Capstone: Case of study. Bikes
-<h1 align="center"> Files in the repository </h1>
+<h1 align="Center"> Google Data Analytics Capstone: Case of study. Bikes </h1>
+<h2> Files in the repository </h2>
 <p> These are the files used to complete the capstone project: </p>
 <ul>
   <li>Reporte.Rdm : It's an R markdown file containing all the steps followed to solve the challenge (in spanish).</li>
