@@ -1,0 +1,108 @@
+---
+title: "Analisis de caso de estudio: Uso de bicicletas, patrones y recomendaciones"
+author: "Jenifer"
+date: "2024-03-24"
+output: html_document
+---
+
+## Introduction and Objetives
+
+### Scenary
+
+You are a junior data analyst working on the market analyst team at Cyclistic, a Chicago bike-sharing company. The
+
+marketing director believes that the company's future success depends on maximizing the number of annual memberships. Therefore, your team wants to:
+
+```         
+Understand how casual cyclists and annual members use Cyclistic bikes differently.
+Use these insights to design a new marketing strategy to convert casual users into annual members.
+```
+
+But first, Cyclistic's executives need to approve your recommendations, so they must be backed up with compelling data insights and professional data visualizations.
+
+### Objetive
+
+Identify usage patterns of both member and casual users, and based on this, recommend a strategy for casual users to subscribe.
+
+## Procedure
+
+### Preparation of the files to be worked on
+
+Primero se obtuvieron los datos de <https://divvy-tripdata.s3.amazonaws.com/index.html> Los datos usados fueron desde marzo de 2023 a marzo de 2024 Se les sacó los encabezados a todos los archivos salvo al de febrero de 2024 y se unieron todos con el comando "cat" de linux. Then, duplicate data was first removed using SQLite with the statement SELECT DISTINCT \* FROM analisis. This was not done directly in RStudio in the transformation phase with the unique() function because R becomes unresponsive due to the amount of data.
+
+### Setting up the environment
+
+```{r librerías, message= FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+```
+
+### Loading the data in RStudio
+
+```{r carga de datos message, message=FALSE, warning=FALSE }
+bike_rides <- read.csv("analisis_sin_repetidos_v2.csv", header= TRUE, sep="|")
+```
+
+###Transforming the data wo columns are added: one with the usage time ended_at - started_at and another indicating the day of the week the trip occurred. The time difference and the days of the week were converted to numbers using as.numeric() to perform the chi-squared test to determine if members and casual users follow the same distribution.
+
+```{r trasformación de datos, message= FALSE, warning=FALSE}
+bike_rides_v2 <- bike_rides %>% 
+  mutate(commute_time = as.numeric(ymd_hms(ended_at) - ymd_hms(started_at))) %>%
+  mutate(weekday = wday(started_at))
+
+bike_rides_v3 <- bike_rides_v2 %>% filter(commute_time > 0)
+```
+
+## Analysis
+
+First, the average number of trips per day of the week is calculated and plotted.
+
+```{r se calcula la media de tiempos de viaje por semana, message=FALSE, warning=FALSE}
+media_commutetime <- bike_rides_v2 %>%
+  group_by(weekday) %>%
+  summarise(media_commute_time = mean(commute_time, na.rm = TRUE))
+```
+
+```{r gráfico de medias de tiempo de viaje por semana, message=FALSE, warning=FALSE}
+ggplot(media_commutetime, aes(x = weekday, y = media_commute_time)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(x = "Día de la semana", y = "Media de tiempo de viaje", title = "Media de tiempo de viaje por día de la semana")
+```
+
+Next, the average travel time per week is calculated separately for members and casual users.
+
+```{r se calcula la media de tiempos de viaje por semana en el caso de los miembros y usuarios casuales por separado, message=FALSE, warning=FALSE}
+
+media_commutetime_member<- bike_rides_v2 %>% filter(member_casual=="member") %>%
+  group_by(weekday) %>%
+  summarise(media_commute_time = mean(commute_time, na.rm = TRUE))
+
+media_commutetime_casual<- bike_rides_v2 %>% filter(member_casual=="casual") %>%
+  group_by(weekday) %>%
+  summarise(media_commute_time = mean(commute_time, na.rm = TRUE))
+
+p1 <- ggplot(media_commutetime_member, aes(x = weekday, y = media_commute_time)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "skyblue") +
+  labs(x = "Día de la semana", y = "Media de tiempo de viaje", title = "Media de tiempo de viaje por día de la semana de miembros")
+
+p2 <- ggplot(media_commutetime_casual, aes(x = weekday, y = media_commute_time)) +
+  geom_bar(stat = "identity", position = "dodge", fill = "orange") +
+  labs(x = "Día de la semana", y = "Media de tiempo de viaje", title = "Media de tiempo de viaje por día de la semana de miembros")
+
+grid.arrange(p1, p2, ncol=2)
+```
+
+Finally, to determine whether there are differences in the behavior of members and casual users, a chi-squared test was performed.
+
+```{r}
+miembros <- bike_rides_v3%>% filter( member_casual == "member") %>% select(weekday, commute_time)
+casuales <- bike_rides_v3%>% filter( member_casual == "casual") %>% select(weekday, commute_time)
+chisq.test(miembros, casuales)
+```
+
+## Results and Conclusion
+
+Casual members and subscribers exhibit distinct behavioral patterns, as evident from both the graph and the chi-squared test result (p-value \< 0.05). For casual members, the number of trips increases during weekends, suggesting that promotions during these days could be effective in attracting casual users.
